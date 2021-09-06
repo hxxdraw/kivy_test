@@ -1,18 +1,30 @@
+from kivy.lang import Builder
 from kivymd.app import MDApp
-from kivy.lang.builder import Builder
-from kivymd.uix.tab import MDTabsBase
-from kivymd.icon_definitions import md_icons
-from kivymd.uix.floatlayout import MDFloatLayout
-from kivymd.uix.dialog import MDDialog
-from source.ui import custom
-from kivymd.uix.button import *
-from kivymd.uix.boxlayout import *
+from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.expansionpanel import MDExpansionPanel, MDExpansionPanelThreeLine
+from kivymd import images_path
 import source.client.client_prototype as cl
-from kivymd.uix.card import *
-from kivymd.uix.label import *
-from kivymd.uix.screen import MDScreen
+from kivymd.icon_definitions import md_icons
+from kivymd.uix.button import *
+from kivymd.uix.dialog import *
 
-KV = """
+
+KV = '''
+MDScreen:
+    MDBoxLayout:
+        orientation: "vertical"
+        
+        MDToolbar:
+            md_bg_color: app.theme_cls.bg_darkest
+            title: "Select Desktop"
+            right_action_items: [["dots-vertical", lambda e: print(e)]]
+            
+        ScrollView:
+            MDGridLayout:
+                id: box
+                cols: 1
+                adaptive_height: True
+
 <DialogBoxContent>
     size_hint_y: None
     height: "50dp"
@@ -23,49 +35,62 @@ KV = """
         password: True
         hint_text: "password"
 
-MDFlatButton:
-    text: "Connect"
-    pos_hint: {"center_x": 0.5, "center_y": 0.5}
-    on_release: app.login_dialog(self.text)
+<Content>
+    size_hint: None, None
+    adaptive_size: True
+    height: "0dp"
+    
+'''
 
-"""
+
+class Content(MDBoxLayout):
+    '''Custom content.'''
 
 
 class DialogBoxContent(MDBoxLayout):
     pass
 
 
-class Application(MDApp):
+class Test(MDApp):
     access_dialog = None
 
     def build(self):
+        self.theme_cls.theme_style = "Dark"
         return Builder.load_string(KV)
 
     def on_start(self):
-        pass
-
-    def login_dialog(self, desktop_name):
-        if not self.access_dialog:
-            self.access_dialog = MDDialog(
-                title=custom.AccessDialog.title.format(desktop_name),
-                type="custom",
-                content_cls=DialogBoxContent(),
-                buttons=[
-                    MDFlatButton(
-                        **custom.AccessDialog.CANCEL_BUTTON, on_release=lambda e: self.access_dialog.dismiss(force=True)
-                    ),
-                    MDFlatButton(
-                        **custom.AccessDialog.OK_BUTTON
+        for table in cl.TABLES.items():
+            self.panel = MDExpansionPanel(
+                    on_open=lambda: print(123),
+                    icon=table[1]['platform'],
+                    opening_time=0.05,
+                    closing_time=0.05,
+                    content=Content(),
+                    panel_cls=MDExpansionPanelThreeLine(
+                        text=table[0],
+                        secondary_text=table[1]['ip'],
+                        tertiary_text=table[1]['domain'],
                     )
-                ]
-            )
+                )
+            self.panel.bind(on_open=self.connect_dialog)
+            self.root.ids.box.add_widget(self.panel)
+
+    def connect_dialog(self, desktop_name):
+        self.access_dialog = MDDialog(
+            title='Desktop: "{}"'.format(desktop_name.panel_cls.text),
+            type="custom",
+            content_cls=DialogBoxContent(),
+            buttons=[
+                MDFlatButton(
+                    text="CANCEL",
+                    on_release=lambda e: self.access_dialog.dismiss(force=True)
+                ),
+                MDFlatButton(
+                    text="CONNECT"
+                )
+            ]
+        )
         self.access_dialog.open()
 
 
-class Tab(MDFloatLayout, MDTabsBase):
-    pass
-
-
-if __name__ == "__main__":
-    Application().run()
-
+Test().run()
